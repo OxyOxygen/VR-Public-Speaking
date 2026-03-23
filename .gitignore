@@ -1,9 +1,9 @@
 # Unity generated
+Library/
 Temp/
 Obj/
-Build/
-Builds/
-MemoryCaptures/
+Logs/
+UserSettings/
 
 # Unity cache
 [Ll]ibrary/
