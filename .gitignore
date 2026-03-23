@@ -1,11 +1,8 @@
 # Unity generated
-Library/
 Temp/
 Obj/
 Build/
 Builds/
-Logs/
-UserSettings/
 MemoryCaptures/
 
 # Unity cache
@@ -19,9 +16,6 @@ MemoryCaptures/
 
 # Visual Studio
 .vs/
-*.csproj
-*.unityproj
-*.sln
 *.suo
 *.user
 *.userosscache
