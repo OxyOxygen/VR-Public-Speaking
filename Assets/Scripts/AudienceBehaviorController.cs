@@ -11,25 +11,10 @@ public enum AudienceState
     Neutral,
     Distracted,
     Bored,
-    Applauding
-}
-
-[System.Serializable]
-public class PerformanceThresholds
-{
-    [Header("Eye Contact")]
-    public float eyeContactGoodThreshold = 0.70f;
-    public float eyeContactPoorThreshold = 0.30f;
-
-    [Header("Speech Pace (WPM)")]
-    public float wpmTooFast = 180f;
-    public float wpmTooSlow = 100f;
-
-    [Header("Filler Words")]
-    public float fillerWordsPerMinute = 5f;
-
-    [Header("Monotone Detection")]
-    public float monotoneDurationSeconds = 20f;
+    Applauding,
+    Nodding,
+    Stretching,
+    Sleeping
 }
 
 [System.Serializable]
@@ -48,21 +33,15 @@ public class AudienceBehaviorController : MonoBehaviour
     public StressLevel currentStressLevel = StressLevel.Medium;
     public List<StressScenario> scenarios = new List<StressScenario>();
 
-    [Header("Thresholds")]
-    public PerformanceThresholds thresholds = new PerformanceThresholds();
+    [Header("Core Engines")]
+    public AudienceReactionEngine reactionEngine;
 
     [Header("Audience Members")]
     public List<AudienceMember> audienceMembers = new List<AudienceMember>();
 
     private StressScenario _activeScenario;
-    private float _monotoneTimer = 0f;
-    private bool _isMonotone = false;
 
-    [Header("Live Metrics (Test)")]
-    public float eyeContactRatio = 1.0f;
-    public float currentWPM = 130f;
-    public float fillerWordsPerMin = 0f;
-    public bool isVoiceMonotone = false;
+    [Header("Live State")]
     public bool sessionEnded = false;
 
     void Start()
@@ -84,61 +63,87 @@ public class AudienceBehaviorController : MonoBehaviour
             return;
         }
 
-        UpdateMonotoneTimer();
         EvaluateAndSetStatePerMember();
     }
 
     private void EvaluateAndSetStatePerMember()
     {
+        if (reactionEngine == null || reactionEngine.scoringEngine == null)
+            return; // Wait for engines
+
+        // Get the frame from Engine
+        ReactionFrame frame = reactionEngine.currentReaction;
         float negMult = _activeScenario != null ? _activeScenario.negativeReactionMultiplier : 1f;
+        float finalScore = reactionEngine.scoringEngine.GetFinalScore();
 
         foreach (var member in audienceMembers)
         {
             if (member == null) continue;
 
-            float eyeTolerance = member.personalEyeContactTolerance;
-            float wpmTolerance = member.personalWpmTolerance;
+            // ---- BİREYSEL SKOR HESABI ----
+            // Her öğrencinin kişilik toleransı, genel skoru kendi perspektifinden kaydırır.
+            float personalScore = finalScore 
+                + (member.personalEyeContactTolerance * 40f)
+                + (member.personalWpmTolerance * 0.3f);
+            personalScore = Mathf.Clamp(personalScore, 0f, 100f);
 
-            AudienceState state;
+            // Stress seviyesine göre negatif tepkileri güçlendir
+            personalScore = Mathf.Lerp(personalScore, personalScore * (2f - negMult), 0.5f);
 
-            if ((_isMonotone && negMult >= 1.0f) || currentWPM < thresholds.wpmTooSlow + wpmTolerance)
+            AudienceState targetState;
+
+            // ---- KESİN VE MUTLAK UYKU TETİKLEYİCİSİ ----
+            if (finalScore < 20f)
             {
-                state = AudienceState.Bored;
+                // Tolerans falan dinlemeden, sınıf çok kötü performans sebebiyle TOPLUCA masaya yığılır
+                targetState = AudienceState.Sleeping;
+                
+                if (member.proceduralAnimator != null)
+                    member.proceduralAnimator.externalBoredomLevel = 1f;
             }
-            else if (eyeContactRatio < (thresholds.eyeContactPoorThreshold + eyeTolerance) * negMult
-                || fillerWordsPerMin > thresholds.fillerWordsPerMinute * negMult)
+            // ---- BİREYSEL STATE SEÇİMİ YENİ (3 BAND - SCORE SCALING) ----
+            else if (personalScore < 40f)
             {
-                state = AudienceState.Distracted;
+                // LOW SCORE (20 - 40 Arası): 3 Farklı Olumsuz Animasyonun Dengeli Dağılımı
+                // Öğrencinin bireysel tahammül seviyesine göre hala bazıları uyanık (Distracted) kalmaya çalışır
+                if (member.personalWpmTolerance < -5f)
+                {
+                    targetState = AudienceState.Sleeping; 
+                }
+                else if (frame.dominant_factors.Contains("eye_contact_low") && personalScore > 30f)
+                {
+                    targetState = AudienceState.Distracted; // Sadece sıkılıp etrafa bakınsın
+                }
+                else
+                {
+                    targetState = AudienceState.Stretching; // Geriye kaykılma (Boredom)
+                }
+                
+                if (member.proceduralAnimator != null)
+                    member.proceduralAnimator.externalBoredomLevel = Mathf.InverseLerp(40f, 20f, personalScore);
             }
-            else if (eyeContactRatio > thresholds.eyeContactGoodThreshold
-                && currentWPM >= thresholds.wpmTooSlow
-                && currentWPM <= thresholds.wpmTooFast
-                && fillerWordsPerMin < thresholds.fillerWordsPerMinute)
+            else if (personalScore <= 60f)
             {
-                state = AudienceState.Attentive;
+                // NORMAL SCORE (Normal dinleme, aşırı tepki yok)
+                targetState = AudienceState.Neutral;
+                
+                if (member.proceduralAnimator != null)
+                    member.proceduralAnimator.externalBoredomLevel = 0f;
             }
             else
             {
-                state = AudienceState.Neutral;
+                // HIGH SCORE (Nodding, Attentive - Pür dikkat / Onaylama)
+                // Göz teması iyiyse veya öğrencinin kişisel yatkınlığı varsa kafa sallayıp onaylasın
+                if (frame.dominant_factors.Contains("good_eye_contact") || member.personalEyeContactTolerance > 0f)
+                    targetState = AudienceState.Nodding;
+                else
+                    targetState = AudienceState.Attentive;
+                
+                if (member.proceduralAnimator != null)
+                    member.proceduralAnimator.externalBoredomLevel = 0f;
             }
 
-            Debug.Log($"[Member] {member.gameObject.name} → {state} | eyeTol: {eyeTolerance:F2} | wpmTol: {wpmTolerance:F1}");
-            member.SetState(state);
-        }
-    }
-
-    private void UpdateMonotoneTimer()
-    {
-        if (isVoiceMonotone)
-        {
-            _monotoneTimer += Time.deltaTime;
-            if (_monotoneTimer >= thresholds.monotoneDurationSeconds)
-                _isMonotone = true;
-        }
-        else
-        {
-            _monotoneTimer = 0f;
-            _isMonotone = false;
+            member.SetState(targetState);
         }
     }
 
@@ -147,18 +152,40 @@ public class AudienceBehaviorController : MonoBehaviour
         _activeScenario = scenarios.Find(s => s.level == level);
         if (_activeScenario == null)
         {
-            Debug.LogWarning($"[Audience] Scenario not found for level: {level}");
-            return;
+            _activeScenario = CreateDefaultScenario(level);
         }
         currentStressLevel = level;
     }
 
-    public void UpdateMetrics(float eyeContact, float wpm, float fillerWPM, bool monotone)
+    private StressScenario CreateDefaultScenario(StressLevel level)
     {
-        eyeContactRatio = Mathf.Clamp01(eyeContact);
-        currentWPM = Mathf.Max(0, wpm);
-        fillerWordsPerMin = Mathf.Max(0, fillerWPM);
-        isVoiceMonotone = monotone;
+        StressScenario scenario = new StressScenario();
+        scenario.level = level;
+
+        switch (level)
+        {
+            case StressLevel.Easy:
+                scenario.audienceSize = 20;
+                scenario.negativeReactionMultiplier = 0.85f;
+                scenario.positiveReactionMultiplier = 1.1f;
+                scenario.description = "Default easy scenario";
+                break;
+            case StressLevel.Hard:
+                scenario.audienceSize = 50;
+                scenario.negativeReactionMultiplier = 1.2f;
+                scenario.positiveReactionMultiplier = 0.9f;
+                scenario.description = "Default hard scenario";
+                break;
+            case StressLevel.Medium:
+            default:
+                scenario.audienceSize = 35;
+                scenario.negativeReactionMultiplier = 1f;
+                scenario.positiveReactionMultiplier = 1f;
+                scenario.description = "Default medium scenario";
+                break;
+        }
+
+        return scenario;
     }
 
     public void TriggerSessionEnd() => sessionEnded = true;

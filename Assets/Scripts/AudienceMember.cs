@@ -4,52 +4,60 @@ using UnityEngine;
 public class AudienceMember : MonoBehaviour
 {
     public Animator animator;
+    public ProceduralAudienceAnimator proceduralAnimator;
     public float reactionDelay = 0f;
     public float personalWpmTolerance;
     public float personalEyeContactTolerance;
     private AudienceState _currentState = AudienceState.Idle;
+    private Coroutine _stateRoutine;
+    private int _stateVersion;
+    
+    public AudienceState CurrentState => _currentState;
 
     void Awake()
     {
         animator = GetComponent<Animator>();
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
+            
+        proceduralAnimator = GetComponent<ProceduralAudienceAnimator>();
+        if (proceduralAnimator == null)
+            proceduralAnimator = GetComponentInChildren<ProceduralAudienceAnimator>();
+
         reactionDelay = Random.Range(0f, 3.0f);
-        personalWpmTolerance = 0f;
-        personalEyeContactTolerance = 0f;
+        // Kişilik farklılıkları: pozitif = hoşgörülü, negatif = hassas
+        personalWpmTolerance = Random.Range(-20f, 20f);
+        personalEyeContactTolerance = Random.Range(-0.15f, 0.15f);
     }
 
     public void SetState(AudienceState newState)
     {
         if (_currentState == newState) return;
         _currentState = newState;
+        _stateVersion++;
+
+        if (_stateRoutine != null)
+        {
+            StopCoroutine(_stateRoutine);
+            _stateRoutine = null;
+        }
+
         float delay = newState == AudienceState.Applauding ? 0f : reactionDelay;
-        StartCoroutine(ApplyStateWithDelay(newState, delay));
+        _stateRoutine = StartCoroutine(ApplyStateWithDelay(newState, delay, _stateVersion));
     }
 
-    private IEnumerator ApplyStateWithDelay(AudienceState state, float delay)
+    private IEnumerator ApplyStateWithDelay(AudienceState state, float delay, int version)
     {
         yield return new WaitForSeconds(delay);
-        TriggerAnimation(state);
-    }
 
-    private void TriggerAnimation(AudienceState state)
-    {
-        if (animator == null) return;
-        animator.ResetTrigger("Idle");
-        animator.ResetTrigger("Attentive");
-        animator.ResetTrigger("Neural");
-        animator.ResetTrigger("Distracted");
-        animator.ResetTrigger("Bored");
-        animator.ResetTrigger("Applaud");
-        switch (state)
+        if (version != _stateVersion)
+            yield break;
+        
+        if (proceduralAnimator != null)
         {
-            case AudienceState.Idle: animator.SetTrigger("Idle"); break;
-            case AudienceState.Attentive: animator.SetTrigger("Attentive"); break;
-            case AudienceState.Neutral: animator.SetTrigger("Neural"); break;
-            case AudienceState.Distracted: animator.SetTrigger("Distracted"); break;
-            case AudienceState.Bored: animator.SetTrigger("Bored"); break;
-            case AudienceState.Applauding: animator.SetTrigger("Applaud"); break;
+            proceduralAnimator.SetState(state);
         }
+
+        _stateRoutine = null;
     }
 }
