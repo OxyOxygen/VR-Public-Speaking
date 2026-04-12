@@ -120,8 +120,10 @@ public class AudienceSpawner : MonoBehaviour
             if (anim == null) anim = memberObj.AddComponent<Animator>();
             anim.applyRootMotion = false;
             anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            
+            // ASIL KONTROLCÜYÜ DİREKT ATA (Silme/Ezme yapma)
             if (sharedAnimatorController != null)
-                anim.runtimeAnimatorController = BuildControllerForSpawn();
+                anim.runtimeAnimatorController = sharedAnimatorController;
 
             // ── 3) Normalize height (Shrink slightly so they fit chairs) ──
             Bounds bounds;
@@ -181,19 +183,14 @@ public class AudienceSpawner : MonoBehaviour
                 );
             }
 
-            // ── 5) Add components ──
-            if (memberObj.GetComponent<ProceduralAudienceAnimator>() == null)
-                memberObj.AddComponent<ProceduralAudienceAnimator>();
+            // ── 5) Add components (Sıralama Krittik: Önce Motor, Sonra Beyin) ──
+            var procAnim = memberObj.GetComponent<ProceduralAudienceAnimator>();
+            if (procAnim == null) procAnim = memberObj.AddComponent<ProceduralAudienceAnimator>();
+            procAnim.enabled = true; // Kesinlikle aktif olmalı
 
-            // if (memberObj.GetComponent<AudienceVisualizer>() == null)
-            //     memberObj.AddComponent<AudienceVisualizer>();
-
-            // GERÇEK MIXAMO RENKLERİ GELDİĞİ İÇİN SAHTE BOYA ATAN SCRIPTİ KAPATTIK
-            // if (memberObj.GetComponent<AudienceVisualEnhancer>() == null)
-            //     memberObj.AddComponent<AudienceVisualEnhancer>();
-
-            AudienceMember am = memberObj.GetComponent<AudienceMember>();
+            var am = memberObj.GetComponent<AudienceMember>();
             if (am == null) am = memberObj.AddComponent<AudienceMember>();
+            am.enabled = true;
 
             // Stress-level personality
             switch (controller.currentStressLevel)
@@ -345,24 +342,7 @@ public class AudienceSpawner : MonoBehaviour
         return prefabs;
     }
 
-    private RuntimeAnimatorController BuildControllerForSpawn()
-    {
-        if (sharedAnimatorController == null || seatedIdleClip == null)
-            return sharedAnimatorController;
 
-        AnimatorOverrideController oc = new AnimatorOverrideController(sharedAnimatorController);
-        List<KeyValuePair<AnimationClip, AnimationClip>> overrides =
-            new List<KeyValuePair<AnimationClip, AnimationClip>>();
-        foreach (AnimationClip clip in oc.animationClips)
-        {
-            AnimationClip replacement = (clip != null && clip.name.ToLower().Contains("clap"))
-                ? (seatedClapClip != null ? seatedClapClip : seatedIdleClip)
-                : seatedIdleClip;
-            overrides.Add(new KeyValuePair<AnimationClip, AnimationClip>(clip, replacement));
-        }
-        oc.ApplyOverrides(overrides);
-        return oc;
-    }
 
     private void EnsureControllerReferences()
     {

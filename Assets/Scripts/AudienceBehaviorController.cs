@@ -14,7 +14,8 @@ public enum AudienceState
     Applauding,
     Nodding,
     Stretching,
-    Sleeping
+    NoteTaking,
+    ChinResting
 }
 
 [System.Serializable]
@@ -92,39 +93,50 @@ public class AudienceBehaviorController : MonoBehaviour
 
             AudienceState targetState;
 
-            // ---- KESİN VE MUTLAK UYKU TETİKLEYİCİSİ ----
-            if (finalScore < 20f)
-            {
-                // Tolerans falan dinlemeden, sınıf çok kötü performans sebebiyle TOPLUCA masaya yığılır
-                targetState = AudienceState.Sleeping;
-                
-                if (member.proceduralAnimator != null)
-                    member.proceduralAnimator.externalBoredomLevel = 1f;
-            }
             // ---- BİREYSEL STATE SEÇİMİ YENİ (3 BAND - SCORE SCALING) ----
-            else if (personalScore < 40f)
+            if (personalScore < 35f)
             {
-                // LOW SCORE (20 - 40 Arası): 3 Farklı Olumsuz Animasyonun Dengeli Dağılımı
-                // Öğrencinin bireysel tahammül seviyesine göre hala bazıları uyanık (Distracted) kalmaya çalışır
-                if (member.personalWpmTolerance < -5f)
+                // CRITICAL LOW SCORE (< 35)
+                if (member.CurrentState == AudienceState.Stretching || member.CurrentState == AudienceState.Distracted)
                 {
-                    targetState = AudienceState.Sleeping; 
-                }
-                else if (frame.dominant_factors.Contains("eye_contact_low") && personalScore > 30f)
-                {
-                    targetState = AudienceState.Distracted; // Sadece sıkılıp etrafa bakınsın
+                    targetState = member.CurrentState;
                 }
                 else
                 {
-                    targetState = AudienceState.Stretching; // Geriye kaykılma (Boredom)
+                    float r = Random.value;
+                    if (r > 0.6f) targetState = AudienceState.Stretching; 
+                    else targetState = AudienceState.Distracted;
+                }
+
+                if (member.proceduralAnimator != null)
+                    member.proceduralAnimator.externalBoredomLevel = 1.0f;
+            }
+            else if (personalScore < 55f)
+            {
+                // LOW/NEUTRAL SCORE (35 - 55 Arası)
+                // Daha fazla tepki çeşitliliği
+                if (member.CurrentState == AudienceState.Distracted || 
+                    member.CurrentState == AudienceState.Stretching || 
+                    member.CurrentState == AudienceState.NoteTaking || 
+                    member.CurrentState == AudienceState.Neutral)
+                {
+                    targetState = member.CurrentState;
+                }
+                else
+                {
+                    float rLow = Random.value;
+                    if (rLow > 0.7f) targetState = AudienceState.Distracted; // Telefon/Tablet
+                    else if (rLow > 0.45f) targetState = AudienceState.Stretching; // Esneme
+                    else if (rLow > 0.25f) targetState = AudienceState.NoteTaking; // Not Tutma
+                    else targetState = AudienceState.Neutral; // Sakin bekleme
                 }
                 
                 if (member.proceduralAnimator != null)
-                    member.proceduralAnimator.externalBoredomLevel = Mathf.InverseLerp(40f, 20f, personalScore);
+                    member.proceduralAnimator.externalBoredomLevel = Mathf.InverseLerp(55f, 35f, personalScore);
             }
-            else if (personalScore <= 60f)
+            else if (personalScore <= 75f)
             {
-                // NORMAL SCORE (Normal dinleme, aşırı tepki yok)
+                // NORMAL/GOOD SCORE (55 - 75 Arası)
                 targetState = AudienceState.Neutral;
                 
                 if (member.proceduralAnimator != null)
@@ -132,15 +144,36 @@ public class AudienceBehaviorController : MonoBehaviour
             }
             else
             {
-                // HIGH SCORE (Nodding, Attentive - Pür dikkat / Onaylama)
-                // Göz teması iyiyse veya öğrencinin kişisel yatkınlığı varsa kafa sallayıp onaylasın
-                if (frame.dominant_factors.Contains("good_eye_contact") || member.personalEyeContactTolerance > 0f)
-                    targetState = AudienceState.Nodding;
+                // HIGH SCORE (> 75)
+                if (member.CurrentState == AudienceState.Nodding ||
+                    member.CurrentState == AudienceState.NoteTaking ||
+                    member.CurrentState == AudienceState.Attentive)
+                {
+                    targetState = member.CurrentState;
+                    // Force Nodding if eye contact is exceptionally good
+                    if (frame.dominant_factors.Contains("good_eye_contact") && targetState != AudienceState.Nodding)
+                    {
+                        targetState = AudienceState.Nodding;
+                    }
+                }
                 else
-                    targetState = AudienceState.Attentive;
+                {
+                    float r = Random.value;
+                    if (r > 0.6f || frame.dominant_factors.Contains("good_eye_contact"))
+                        targetState = AudienceState.Nodding;
+                    else if (r > 0.3f)
+                        targetState = AudienceState.NoteTaking;
+                    else
+                        targetState = AudienceState.Attentive;
+                }
                 
                 if (member.proceduralAnimator != null)
                     member.proceduralAnimator.externalBoredomLevel = 0f;
+            }
+
+            if (targetState == AudienceState.Stretching)
+            {
+                Debug.Log($"[Behavior] Member {member.name} - Score: {personalScore:F1} - Target State: {targetState}");
             }
 
             member.SetState(targetState);

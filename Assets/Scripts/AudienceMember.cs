@@ -53,9 +53,21 @@ public class AudienceMember : MonoBehaviour
         if (version != _stateVersion)
             yield break;
         
+        // GÜVENLİK FİX: Eğer ProceduralAnimator Awake anınca bulunamadıysa şimdi tekrar ara
+        if (proceduralAnimator == null)
+        {
+            proceduralAnimator = GetComponent<ProceduralAudienceAnimator>();
+            if (proceduralAnimator == null) 
+                proceduralAnimator = GetComponentInChildren<ProceduralAudienceAnimator>();
+        }
+        
         if (proceduralAnimator != null)
         {
             proceduralAnimator.SetState(state);
+        }
+        else
+        {
+            Debug.LogError($"[AudienceMember] {gameObject.name} üzerinde ProceduralAudienceAnimator bulunamadı! Sinyal kayboldu.", this);
         }
 
         _stateRoutine = null;

@@ -52,6 +52,7 @@
     <Compile Include="Assets\Editor\AutoFBXExtractor.cs" />
     <Compile Include="Assets\Editor\AutoSetupPackages.cs" />
     <Compile Include="Assets\Editor\AutoSceneConfigurator.cs" />
+    <Compile Include="Assets\Editor\MocapMaskSetup.cs" />
     <Compile Include="Assets\Editor\AutoCleaner.cs" />
     <Compile Include="Assets\Editor\ClassroomSetupManager.cs" />
   </ItemGroup>
