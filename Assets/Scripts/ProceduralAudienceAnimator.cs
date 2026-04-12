@@ -9,6 +9,7 @@ public class ProceduralAudienceAnimator : MonoBehaviour
 
     [Header("Bone References")]
     [SerializeField] private Transform spine;
+    [SerializeField] private Transform neck; // Organik hareket için eklendi
     [SerializeField] private Transform head;
 
     [Header("Settings")]
@@ -26,12 +27,15 @@ public class ProceduralAudienceAnimator : MonoBehaviour
     [HideInInspector] public Transform[] distractionTargets;
 
     private Quaternion initialSpineRot;
+    private Quaternion initialNeckRot;
     private Quaternion initialHeadRot;
     private Quaternion targetSpineRot;
+    private Quaternion targetNeckRot;
     private Quaternion targetHeadRot;
     
     // SÜREKLİ EZİLEN ANIMATOR'A KARŞI GERÇEK DEĞERLERİ TUTAN FİZİKSEL DEĞİŞKENLER
     private Quaternion currentSpineRot;
+    private Quaternion currentNeckRot;
     private Quaternion currentHeadRot;
 
     private float timer;
@@ -46,12 +50,14 @@ public class ProceduralAudienceAnimator : MonoBehaviour
             if (_animator != null && _animator.isHuman)
             {
                 if (spine == null) spine = _animator.GetBoneTransform(HumanBodyBones.Spine);
-                if (head == null) head = _animator.GetBoneTransform(HumanBodyBones.Head);
+                if (neck == null)  neck  = _animator.GetBoneTransform(HumanBodyBones.Neck);
+                if (head == null)  head  = _animator.GetBoneTransform(HumanBodyBones.Head);
             }
 
             // EĞER HUMAN DEĞİLSE VEYA AVATAR YOKSA İSİMDEN (RECURSIVE) BULMAYA ÇALIŞ:
             if (spine == null) spine = FindBoneRecursive(transform, "Spine");
-            if (head == null) head = FindBoneRecursive(transform, "Head");
+            if (neck == null)  neck  = FindBoneRecursive(transform, "Neck");
+            if (head == null)  head  = FindBoneRecursive(transform, "Head");
             
             if (spine == null || head == null)
             {
@@ -80,6 +86,11 @@ public class ProceduralAudienceAnimator : MonoBehaviour
             initialSpineRot = spine.localRotation;
             currentSpineRot = initialSpineRot;
         }
+        if (neck != null)
+        {
+            initialNeckRot = neck.localRotation;
+            currentNeckRot = initialNeckRot;
+        }
         if (head != null) 
         {
             initialHeadRot = head.localRotation;
@@ -101,10 +112,13 @@ public class ProceduralAudienceAnimator : MonoBehaviour
         timer += Time.deltaTime;
         CalculateTargets();
 
-        currentSpineRot = Quaternion.Lerp(currentSpineRot, targetSpineRot, Time.deltaTime * transitionSpeed);
-        currentHeadRot = Quaternion.Lerp(currentHeadRot, targetHeadRot, Time.deltaTime * transitionSpeed);
+        // Daha insansı ve yumuşak kavisler için Lerp yerine Slerp (Spherical Lerp) kullanıyoruz
+        currentSpineRot = Quaternion.Slerp(currentSpineRot, targetSpineRot, Time.deltaTime * transitionSpeed);
+        if (neck != null) currentNeckRot = Quaternion.Slerp(currentNeckRot, targetNeckRot, Time.deltaTime * transitionSpeed);
+        currentHeadRot = Quaternion.Slerp(currentHeadRot, targetHeadRot, Time.deltaTime * transitionSpeed);
 
         spine.localRotation = currentSpineRot;
+        if (neck != null) neck.localRotation = currentNeckRot;
         head.localRotation = currentHeadRot;
     }
 
@@ -127,44 +141,69 @@ public class ProceduralAudienceAnimator : MonoBehaviour
 
     private void CalculateTargets()
     {
-        float breath = Mathf.Sin(timer * breathingSpeed) * breathingAmount;
-        Quaternion breathSpineRot = SafeEuler(breath, 0f, 0f, spine);
-        Quaternion breathHeadRot = SafeEuler(breath * -0.5f, 0f, 0f, head);
+        // 1. ORGANİK NEFES: İnsan nefesi kusursuz robotik bir ritimde olmaz. Sinüs dalgasına Perlin gürültüsü katıyoruz.
+        float organicBreathModifier = 1f + (Mathf.PerlinNoise(timer * 0.2f, 0f) - 0.5f) * 0.4f; 
+        float breath = Mathf.Sin(timer * breathingSpeed * organicBreathModifier) * breathingAmount;
+        
+        // 2. MİKRO VÜCUT SARKMASI: İnsanlar otururken omurgaları milimetrik olarak yer değiştirir.
+        float microSwayX = (Mathf.PerlinNoise(timer * 0.15f, 10f) - 0.5f) * 3f; 
+        float microSwayZ = (Mathf.PerlinNoise(20f, timer * 0.15f) - 0.5f) * 2f;
+
+        Quaternion breathSpineRot = SafeEuler(breath + microSwayX, 0f, microSwayZ, spine);
+        Quaternion breathNeckRot = SafeEuler(breath * -0.15f, 0f, 0f, neck);
+        Quaternion breathHeadRot = SafeEuler(breath * -0.15f, 0f, 0f, head);
+
+        if (neck == null) targetNeckRot = Quaternion.identity; // Güvenlik
 
         switch (currentState)
         {
             case StudentState.Idle:
-                // Quaternion çarpımlarında eksen koruması için bizim yatırma açımız SOLDA, kemiğin asıl pozu SAĞDA olmalıdır.
+                // 3. MİKRO BAKIŞLAR: Dinleyen biri robot gibi kilitlenmez, kafası 2-3 derece arayla istemsizce sağa sola kayar
+                float microGlanceY = (Mathf.PerlinNoise(timer * 0.3f, 30f) - 0.5f) * 6f; // Sağa sola hafif süzme
+                float microGlanceX = (Mathf.PerlinNoise(40f, timer * 0.3f) - 0.5f) * 3f; // Yukarı aşağı hafif oynama
+
                 targetSpineRot = breathSpineRot * initialSpineRot;
-                targetHeadRot = breathHeadRot * initialHeadRot;
+                if (neck != null) targetNeckRot = SafeEuler(microGlanceX * 0.5f, microGlanceY * 0.5f, 0f, neck) * breathNeckRot * initialNeckRot;
+                targetHeadRot = SafeEuler(microGlanceX, microGlanceY, 0f, head) * breathHeadRot * initialHeadRot;
                 break;
 
             case StudentState.Nodding:
-                targetSpineRot = SafeEuler(5f, 0f, 0f, spine) * breathSpineRot * initialSpineRot;
-                float nod = Mathf.Sin(timer * noddingSpeed) * noddingAmount;
-                targetHeadRot = SafeEuler(nod, 0f, 0f, head) * initialHeadRot;
+                targetSpineRot = SafeEuler(4f, 0f, 0f, spine) * breathSpineRot * initialSpineRot;
+                
+                // Kafa sallarken daha insansı bir kavis (yukarı yavaş, aşağı hızlı vurma efekti için Abs ve ağırlık)
+                float rawNod = Mathf.Sin(timer * noddingSpeed);
+                float organicNod = rawNod * noddingAmount + (Mathf.PerlinNoise(timer, 0f)*2f);
+                
+                if (neck != null) targetNeckRot = SafeEuler(organicNod * 0.4f, 0f, 0f, neck) * breathNeckRot * initialNeckRot;
+                targetHeadRot = SafeEuler(organicNod * 0.6f, 0f, 0f, head) * breathHeadRot * initialHeadRot;
                 break;
 
             case StudentState.Distracted:
-                float bodySwayX = (Mathf.PerlinNoise(timer * distractionSpeed * 0.5f, 0f) - 0.5f) * 15f; 
-                float bodySwayZ = (Mathf.PerlinNoise(0f, timer * distractionSpeed * 0.5f) - 0.5f) * 15f;
+                float bodySwayX = (Mathf.PerlinNoise(timer * distractionSpeed * 0.4f, 0f) - 0.5f) * 18f; 
+                float bodySwayZ = (Mathf.PerlinNoise(0f, timer * distractionSpeed * 0.4f) - 0.5f) * 18f;
                 targetSpineRot = SafeEuler(bodySwayX, 0f, bodySwayZ, spine) * breathSpineRot * initialSpineRot;
                 
-                float noiseX = (Mathf.PerlinNoise(timer * distractionSpeed, 0f) - 0.5f) * distractionAmount;
-                float noiseY = (Mathf.PerlinNoise(0f, timer * distractionSpeed) - 0.5f) * distractionAmount;
-                targetHeadRot = SafeEuler(noiseX, noiseY, 0f, head) * initialHeadRot;
+                // Etrafa daha detaylı bakınma (Hem boyun hem kafa kullanarak)
+                float lookX = (Mathf.PerlinNoise(timer * distractionSpeed, 0f) - 0.5f) * distractionAmount;
+                float lookY = (Mathf.PerlinNoise(0f, timer * distractionSpeed) - 0.5f) * distractionAmount;
+                
+                if (neck != null) targetNeckRot = SafeEuler(lookX * 0.4f, lookY * 0.4f, 0f, neck) * breathNeckRot * initialNeckRot;
+                targetHeadRot = SafeEuler(lookX * 0.6f, lookY * 0.6f, 0f, head) * breathHeadRot * initialHeadRot;
                 break;
 
             case StudentState.Stretching:
                 float stretchBreath = Mathf.Sin(timer * breathingSpeed) * (breathingAmount * 1.5f);
                 targetSpineRot = SafeEuler(-20f, 0f, 0f, spine) * SafeEuler(stretchBreath, 0f, 0f, spine) * initialSpineRot;
-                targetHeadRot = SafeEuler(-15f, 0f, 0f, head) * initialHeadRot;
+                if (neck != null) targetNeckRot = SafeEuler(-10f, 0f, 0f, neck) * initialNeckRot;
+                targetHeadRot = SafeEuler(-5f, 0f, 0f, head) * initialHeadRot;
                 break;
 
             case StudentState.Sleeping:
-                float sleepBreath = Mathf.Sin(timer * (breathingSpeed * 0.5f)) * (breathingAmount * 0.5f);
+                // Uyuyan insanın nefesi derin ve yavaştır
+                float sleepBreath = Mathf.Sin(timer * (breathingSpeed * 0.4f)) * (breathingAmount * 0.7f);
                 targetSpineRot = SafeEuler(65f, 0f, 0f, spine) * SafeEuler(sleepBreath, 0f, 0f, spine) * initialSpineRot;
-                targetHeadRot = SafeEuler(40f, 0f, 0f, head) * initialHeadRot;
+                if (neck != null) targetNeckRot = SafeEuler(20f, 0f, 0f, neck) * initialNeckRot;
+                targetHeadRot = SafeEuler(20f, 0f, 0f, head) * initialHeadRot;
                 break;
         }
     }

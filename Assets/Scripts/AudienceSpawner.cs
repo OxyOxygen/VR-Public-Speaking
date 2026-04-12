@@ -128,9 +128,10 @@ public class AudienceSpawner : MonoBehaviour
             if (TryGetBounds(memberObj, out bounds))
             {
                 float currentHeight = Mathf.Max(bounds.size.y, 0.01f);
-                float targetHeight = 1.55f; // Made smaller than 1.70m so they fit nicely
+                float targetHeight = 2.35f; // Sınıf masaları gerçek hayattan çok daha büyük çizildiği için karakter boyunu tam orantılı yapıyoruz (Eski orana döndürdüm)
                 float scaleFactor = targetHeight / currentHeight;
-                scaleFactor = Mathf.Clamp(scaleFactor, 0.70f, 1.25f);
+                // Mixamo modelleri inç/cm yüzünden x100 veya x0.01 gelebilir, o yüzden sınırı çok genişlettik
+                scaleFactor = Mathf.Clamp(scaleFactor, 0.01f, 200.0f);
                 memberObj.transform.localScale *= scaleFactor;
             }
 
@@ -150,14 +151,20 @@ public class AudienceSpawner : MonoBehaviour
             Vector3 seatInset = GetSeatBackwardOffset(seat);
 
             // Move the character so its hips rest slightly above the seat.
-            Transform hips = anim.GetBoneTransform(HumanBodyBones.Hips);
+            Transform hips = null;
+            if (anim != null && anim.isHuman)
+                hips = anim.GetBoneTransform(HumanBodyBones.Hips);
+            
+            if (hips == null)
+                hips = FindBoneRecursive(memberObj.transform, "hips");
+
             if (hips != null)
             {
                 // Desired hips position: horizontally at seat centre,
-                // vertically 15cm above the seat surface so hands reach the desk!
+                // vertically 25cm above the seat surface so hands reach the desk! (Boyut büyüdüğü için 25cm yaptık)
                 Vector3 desiredHips = new Vector3(
                     seatBounds.center.x + seatInset.x,
-                    seatSurface + 0.15f,
+                    seatSurface + 0.25f,
                     seatBounds.center.z + seatInset.z
                 );
                 Vector3 delta = desiredHips - hips.position;
@@ -165,8 +172,8 @@ public class AudienceSpawner : MonoBehaviour
             }
             else
             {
-                // Fallback: floor-based, but lifted by 15cm
-                float floorY = seatSurface - 0.505f + 0.15f;
+                // Fallback: floor-based, but lifted by 25cm
+                float floorY = seatSurface - 0.505f + 0.25f;
                 memberObj.transform.position = new Vector3(
                     seatBounds.center.x + seatInset.x,
                     floorY,
@@ -181,8 +188,9 @@ public class AudienceSpawner : MonoBehaviour
             // if (memberObj.GetComponent<AudienceVisualizer>() == null)
             //     memberObj.AddComponent<AudienceVisualizer>();
 
-            if (memberObj.GetComponent<AudienceVisualEnhancer>() == null)
-                memberObj.AddComponent<AudienceVisualEnhancer>();
+            // GERÇEK MIXAMO RENKLERİ GELDİĞİ İÇİN SAHTE BOYA ATAN SCRIPTİ KAPATTIK
+            // if (memberObj.GetComponent<AudienceVisualEnhancer>() == null)
+            //     memberObj.AddComponent<AudienceVisualEnhancer>();
 
             AudienceMember am = memberObj.GetComponent<AudienceMember>();
             if (am == null) am = memberObj.AddComponent<AudienceMember>();
@@ -412,6 +420,18 @@ public class AudienceSpawner : MonoBehaviour
         }
         bounds = new Bounds(Vector3.zero, Vector3.zero);
         return false;
+    }
+
+    private Transform FindBoneRecursive(Transform current, string boneName)
+    {
+        if (current.name.ToLower().Contains(boneName.ToLower()))
+            return current;
+        foreach (Transform child in current)
+        {
+            Transform found = FindBoneRecursive(child, boneName);
+            if (found != null) return found;
+        }
+        return null;
     }
 
 #if UNITY_EDITOR
