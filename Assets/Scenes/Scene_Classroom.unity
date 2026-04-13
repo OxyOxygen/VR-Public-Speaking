@@ -39427,9 +39427,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudienceSpawner
   audiencePrefabs:
-  - {fileID: 810561790688549375, guid: a6866221f7dc9a148b0730106345c9b6, type: 3}
-  - {fileID: 305154243922283571, guid: 4bdf9b277bd9224428d18b1c87585918, type: 3}
-  - {fileID: 1302830556401937032, guid: 3966e1ade5ecfee4eb6fc937ce03ad6f, type: 3}
+  - {fileID: 919132149155446097, guid: b2d0579621d9eca459163f526906778e, type: 3}
+  - {fileID: 919132149155446097, guid: 221ed1018cb647346bfcd8ef2bfd3fbf, type: 3}
+  - {fileID: 919132149155446097, guid: b44558652db5fd44882f5461869febaf, type: 3}
+  - {fileID: 919132149155446097, guid: 85cac323b2f1dfa4cbdb344c78f72b3d, type: 3}
+  - {fileID: 919132149155446097, guid: f593bb55855705b4ba0bdda47223ef43, type: 3}
+  - {fileID: 919132149155446097, guid: e58c5b9eeb0df6443b34d99bbff408e2, type: 3}
+  - {fileID: 919132149155446097, guid: edf7d775b6004e346baf780be3d0ede2, type: 3}
+  - {fileID: 919132149155446097, guid: 2969fa9cae91825448e046c98e54d994, type: 3}
+  - {fileID: 919132149155446097, guid: ae8f1816ce4825d4a8ebd07f1fba1044, type: 3}
+  - {fileID: 919132149155446097, guid: 09c849f5b07d2ab489c09fd610bfe538, type: 3}
+  - {fileID: 919132149155446097, guid: aca889a2dae859e489abab8c18e69313, type: 3}
+  - {fileID: 919132149155446097, guid: 41b377907c46f8341bd56bea1cd9d66c, type: 3}
+  - {fileID: 919132149155446097, guid: 4a2e6068e2c63294586823312f10e931, type: 3}
+  - {fileID: 919132149155446097, guid: b35c8d83dd81f07419a7427881454a48, type: 3}
+  - {fileID: 919132149155446097, guid: 257b471d4ed9d8a45b1adc073f706c13, type: 3}
+  - {fileID: 919132149155446097, guid: d55f633c4421d5245b3775b03e04cb2f, type: 3}
   rowCount: 5
   colCount: 7
   rowSpacing: 2
