@@ -30,13 +30,13 @@ public class PostureMetrics
 [System.Serializable]
 public class ScoreBreakdown
 {
-    [Header("Sub Scores")]
-    [Range(0f, 100f)] public float speechScore;
-    [Range(0f, 100f)] public float eyeScore;
-    [Range(0f, 100f)] public float postureScore;
+    [Header("Sub Scores (Calculated)")]
+    public float speechScore;
+    public float eyeScore;
+    public float postureScore;
 
-    [Header("Final Score")]
-    [Range(0f, 100f)] public float totalScore;
+    [Header("Final Score (Calculated)")]
+    public float totalScore;
 }
 
 public class PerformanceScoringEngine : MonoBehaviour
@@ -89,6 +89,12 @@ public class PerformanceScoringEngine : MonoBehaviour
 
     [Header("Auto Recalculate")]
     public bool calculateEveryFrame = true;
+
+    private void OnValidate()
+    {
+        // This ensures the score updates in the Unity Inspector even in Edit mode
+        CalculateSessionScore();
+    }
 
     private void Start()
     {

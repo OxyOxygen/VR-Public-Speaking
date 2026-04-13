@@ -1375,7 +1375,15 @@ MonoBehaviour:
   - {fileID: 810561790688549375, guid: a6866221f7dc9a148b0730106345c9b6, type: 3}
   - {fileID: 305154243922283571, guid: 4bdf9b277bd9224428d18b1c87585918, type: 3}
   - {fileID: 1302830556401937032, guid: 3966e1ade5ecfee4eb6fc937ce03ad6f, type: 3}
+  rowCount: 5
+  colCount: 7
+  rowSpacing: 2
+  colSpacing: 1.5
+  startPosition: {x: -4.5, y: 0, z: 2}
   controller: {fileID: 1117893301}
+  seatBackOffset: 0.02
+  seatedIdleClip: {fileID: 0}
+  seatedClapClip: {fileID: 0}
 --- !u!114 &1117893299
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1413,7 +1421,7 @@ MonoBehaviour:
   pauseWeight: 0.15
   toneWeight: 0.15
   speechFinalWeight: 0.4
-  eyeFinalWeight: 0.35
+  eyeFinalWeight: 0.485
   postureFinalWeight: 0.25
   idealWpmMin: 120
   idealWpmMax: 160
@@ -4073,7 +4081,9 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1779939314}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 1365777992646584174, guid: c426b140516425a4fa67f33dc1636d87, type: 3}
+    - {fileID: 5756542971845365771, guid: c426b140516425a4fa67f33dc1636d87, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c426b140516425a4fa67f33dc1636d87, type: 3}

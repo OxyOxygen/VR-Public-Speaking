@@ -90,25 +90,8 @@ public class AutoSceneConfigurator : EditorWindow
             if (EditorSceneManager.GetActiveScene().isDirty) EditorSceneManager.SaveOpenScenes();
             var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
 
-            // 1. Delete static dummy characters (someone else placed)
-            // They are usually just sitting around. We check for Animator and if they are NOT in the AudienceSpawner
-            // Let's delete ALL MeshRenderers / SkinnedMeshRenderers that are NOT part of the room architecture
-            // Or specifically, characters with "Sitting", "Ch33", "Ch07", "Student"
-            GameObject[] allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-            foreach(GameObject obj in allObjects)
-            {
-                if (obj == null) continue;
-                string lowerName = obj.name.ToLower();
-                if (lowerName.Contains("sitting") || lowerName.Contains("ch07") || lowerName.Contains("ch33") || 
-                    (lowerName.Contains("student") && obj.GetComponent<MeshFilter>() != null))
-                {
-                    // Ensure it's not the room generator root!
-                    if (!lowerName.Contains("rows") && !lowerName.Contains("generator"))
-                    {
-                        DestroyImmediate(obj);
-                    }
-                }
-            }
+            // 1. (Silme mantığı devre dışı bırakıldı - Kullanıcı isteği üzerine karakterler korunuyor)
+
 
             // Determine environment type based on scene name
             EnvironmentType envType = EnvironmentType.classroom;
@@ -125,14 +108,25 @@ public class AutoSceneConfigurator : EditorWindow
 
             // Setup Engines
             AudienceReactionEngine engine = Object.FindFirstObjectByType<AudienceReactionEngine>();
+            PerformanceScoringEngine scoringEngine = Object.FindFirstObjectByType<PerformanceScoringEngine>();
+
             if (engine == null)
             {
                 engine = behaviorController.gameObject.AddComponent<AudienceReactionEngine>();
-                PerformanceScoringEngine perf = behaviorController.gameObject.AddComponent<PerformanceScoringEngine>();
-                engine.scoringEngine = perf;
             }
+
+            if (scoringEngine == null)
+            {
+                scoringEngine = behaviorController.gameObject.AddComponent<PerformanceScoringEngine>();
+            }
+
+            // Ensure they are correctly linked
+            engine.scoringEngine = scoringEngine;
             engine.environmentType = envType;
             behaviorController.reactionEngine = engine;
+
+            // Trigger initial calculation to ensure everything is initialized
+            scoringEngine.CalculateSessionScore();
 
             // Setup Spawner
             AudienceSpawner spawner = Object.FindFirstObjectByType<AudienceSpawner>();

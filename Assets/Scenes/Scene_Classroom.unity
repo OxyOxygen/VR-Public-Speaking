@@ -39480,10 +39480,10 @@ MonoBehaviour:
     swayDurationPercent: 10
     crossedArmsPercent: 5
   scoreBreakdown:
-    speechScore: 0
-    eyeScore: 0
-    postureScore: 0
-    totalScore: 0
+    speechScore: 89.25
+    eyeScore: 65
+    postureScore: 85
+    totalScore: 79.7
   wpmWeight: 0.35
   fillerWeight: 0.35
   pauseWeight: 0.15
