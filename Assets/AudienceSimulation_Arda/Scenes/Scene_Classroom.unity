@@ -39474,16 +39474,16 @@ MonoBehaviour:
     averagePauseDuration: 0.8
     toneVariationScore: 75
   eyeMetrics:
-    eyeContactRatio: 0.65
+    eyeContactRatio: 0.78
   postureMetrics:
     slouchEventsPerMinute: 1
     swayDurationPercent: 10
     crossedArmsPercent: 5
   scoreBreakdown:
     speechScore: 89.25
-    eyeScore: 65
+    eyeScore: 78
     postureScore: 85
-    totalScore: 79.7
+    totalScore: 84.25
   wpmWeight: 0.35
   fillerWeight: 0.35
   pauseWeight: 0.15
@@ -39538,7 +39538,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e18e528410e53be49adf1fe23f65f672, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudienceBehaviorController
-  currentStressLevel: 1
+  currentStressLevel: 2
   scenarios: []
   reactionEngine: {fileID: 2136770983}
   audienceMembers: []
